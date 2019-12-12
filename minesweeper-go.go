@@ -21,41 +21,28 @@ func main(){
 			seeF[i][key] = "*"
 		}
 	}
-	fmt.Println(mapi)
-
 
 	var mc int
 	fmt.Println("Set the mine count")
 	fmt.Fscanln(os.Stdin,&mc)
 	setMines(&mapi, &mc)
-	for key, value := range mapi {
-		key = key
-		fmt.Println(value)
-	}
 	fmt.Println()
 	fmt.Println()
 	setFieldShow(&showfield, mapi)
-	for key, value := range showfield {
-		key = key
-		fmt.Println(value)
-	}
 	printSeeF(seeF)
 	dead := false
 	x,y:=0,0
-	for dead != true {
 		fmt.Println("Pick X")
+	for dead != true {
 		fmt.Fscanln(os.Stdin,&x)
 		fmt.Println("Pick Y")
 		fmt.Fscanln(os.Stdin,&y)
-		seeF[x][y], dead = openCell(x,y,showfield,mapi)
+		dead = openCell(x,y,&showfield,&seeF,mapi)
 		printSeeF(seeF)
 		if dead {
 			fmt.Println("You are ded!")
 		}
-
 	}
-
-
 }
 
 func printSeeF(sf [][]string){
@@ -135,10 +122,52 @@ func setCellShow(m [][]int, x int, y int) int {
 	return count
 }
 
-func openCell(x int, y int, sf [][]int, m [][]int) (string, bool) {
+func openCell(x int, y int, sf *[][]int, seeF *[][]string, m [][]int) (bool) {
 	if m[x][y]==1{
-		return "m",true
+		(*seeF)[x][y] = "m"
+		return true
 	}else {
-		return strconv.Itoa(sf[x][y]), false
+		if (*sf)[x][y]==0 {
+			openNeighbourCells(x,y,&*sf, &*seeF)
+		}
+		(*seeF)[x][y] = strconv.Itoa((*sf)[x][y])
+		return false
 	}
 }
+
+func openCellSafe(x int, y int, sf *[][]int, seeF *[][]string) {
+	if (*seeF)[x][y]!="*"{
+		return
+	}
+	(*seeF)[x][y] = strconv.Itoa((*sf)[x][y])
+	if (*sf)[x][y]==0 {
+		openNeighbourCells(x,y,&*sf,&*seeF)
+	}
+}
+
+func openNeighbourCells(x int, y int, sf *[][]int, seeF *[][]string) {
+ 	if x!=0 {
+		openCellSafe(x-1,y,&*sf,&*seeF)
+		if y!=0 {
+			openCellSafe(x-1,y-1,&*sf,&*seeF)
+		}
+		if y!=len((*sf)[x])-1{
+			openCellSafe(x-1,y+1,&*sf,&*seeF)
+		}
+	}
+	if x!=len(*sf)-1 {
+		openCellSafe(x+1,y,&*sf,&*seeF)
+		if y!=0 {
+			openCellSafe(x+1,y-1,&*sf,&*seeF)
+		}
+		if y!=len((*sf)[x])-1{
+			openCellSafe(x+1,y+1,&*sf,&*seeF)
+		}
+	}
+	if y!=0 {
+		openCellSafe(x,y-1,&*sf,&*seeF)
+	}
+	if y!=len((*sf)[x])-1{
+		openCellSafe(x,y+1,&*sf,&*seeF)
+	}
+ }
