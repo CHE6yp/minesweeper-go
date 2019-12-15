@@ -3,77 +3,74 @@ package main
 import ("fmt"
 	"os"
 	"math/rand"
-	"strconv"
+	//"strconv"
 )
-
+const (
+        InfoColor    = "\033[1;34m%v\033[0m"
+        NoticeColor  = "\033[1;36m%v\033[0m"
+        WarningColor = "\033[1;33m%v\033[0m"
+        ErrorColor   = "\033[1;31m%v\033[0m"
+        DebugColor   = "\033[0;36m%v\033[0m"
+)
 func main(){
 
 	var s int
 	fmt.Println("Set the map size")
 	fmt.Fscanln(os.Stdin,&s)
-	var mapi, showfield = make([][]int,s), make([][]int,s)
-	var seeF = make([][]string,s)
+	var innerMap,outerMap = make([][]string,s), make([][]string,s)
 	for i:=0;i<s;i++{
-		mapi[i] = make([]int,s) 
-		showfield[i] = make([]int,s) 
-		seeF[i] = make([]string,s) 
-		for key := range seeF[i]{
-			seeF[i][key] = "*"
+		innerMap[i], outerMap[i] = make([]string,s), make([]string,s) 
+		for key := range outerMap[i]{
+			outerMap[i][key] = "*"
 		}
 	}
 
-	var mc int
+	var mineCount int
 	fmt.Println("Set the mine count")
-	fmt.Fscanln(os.Stdin,&mc)
-	setMines(&mapi, &mc)
-	fmt.Println()
-	fmt.Println()
-	setFieldShow(&showfield, mapi)
-	printSeeF(seeF)
+	fmt.Fscanln(os.Stdin,&mineCount)
+	setMines(&innerMap, &mineCount)
+
+	printOuterMap(outerMap)
+
 	dead := false
 	x,y:=0,0
-		fmt.Println("Pick X")
 	for dead != true {
+		fmt.Println("Pick X")
 		fmt.Fscanln(os.Stdin,&x)
 		fmt.Println("Pick Y")
 		fmt.Fscanln(os.Stdin,&y)
-		dead = openCell(x,y,&showfield,&seeF,mapi)
-		printSeeF(seeF)
+		dead = openCell(x,y,innerMap,&outerMap)
+		printOuterMap(outerMap)
 		if dead {
 			fmt.Println("You are ded!")
 		}
 	}
 }
 
-func printSeeF(sf [][]string){
-	fmt.Println()
+func printOuterMap(innerMap [][]string){
 	fmt.Println()
 	/////////
-	for key, value := range sf {
-		key = key
-		fmt.Println(value)
+	fmt.Print(" ");
+	for key, _ := range innerMap {
+		fmt.Print(" ")
+		fmt.Printf(NoticeColor,key);
+	}
+	fmt.Println();
+	for key, value := range innerMap {
+		fmt.Printf(NoticeColor,key);
+		fmt.Println(value);
 	}
 }
 
-func setMines(m *[][]int, s *int){
+func setMines(m *[][]string, s *int){
 	x, y := rand.Intn(len(*m)), rand.Intn(len(*m))
 	//x, y := len(*m), cap(*m)
 	// fmt.Println(x,y)
-	(*m)[x][y] = 1;
+	(*m)[x][y] = "m";
 	*s--
 	if (*s!=0){
 		setMines(&*m,&*s)
 	}
-}
-
-func setFieldShow(sf *[][]int, m [][]int) {
-	for key, value := range m {
-		for key2, value2 := range value {
-			value2 = value2
-			(*sf)[key][key2]=setCellShow(m,key,key2)
-		}
-	}
-	// return m
 }
 
 func setCellShow(m [][]int, x int, y int) int {
@@ -122,52 +119,85 @@ func setCellShow(m [][]int, x int, y int) int {
 	return count
 }
 
-func openCell(x int, y int, sf *[][]int, seeF *[][]string, m [][]int) (bool) {
-	if m[x][y]==1{
-		(*seeF)[x][y] = "m"
+func openCell(x int, y int, innerMap [][]string, outerMap *[][]string) (bool) {
+	if innerMap[x][y]=="m"{
+		(*outerMap)[x][y] = "m"
 		return true
 	}else {
-		if (*sf)[x][y]==0 {
-			openNeighbourCells(x,y,&*sf, &*seeF)
+		if innerMap[x][y]=="0" {
+			for _, value := range neighbourCells(x,y,&*outerMap){
+				openCellSafe(x,y,innerMap,&value)
+			}
 		}
-		(*seeF)[x][y] = strconv.Itoa((*sf)[x][y])
+		(*outerMap)[x][y] = innerMap[x][y]
 		return false
 	}
 }
 
-func openCellSafe(x int, y int, sf *[][]int, seeF *[][]string) {
-	if (*seeF)[x][y]!="*"{
+func openCellSafe(x int, y int, innerMap [][]string, cell *string) {
+	if *cell!="*"{
 		return
 	}
-	(*seeF)[x][y] = strconv.Itoa((*sf)[x][y])
-	if (*sf)[x][y]==0 {
-		openNeighbourCells(x,y,&*sf,&*seeF)
+	*cell = (*innerMap)[x][y]
+	if (*innerMap)[x][y]==0 {
+		for _, value = range neighbourCells(x,y,&*innerMap){
+			openCellSafe(x,y,&*innerMap,&*value)
+		}
 	}
 }
 
-func openNeighbourCells(x int, y int, sf *[][]int, seeF *[][]string) {
+func openNeighbourCells(x int, y int, innerMap *[][]int, outerMap *[][]string) {
  	if x!=0 {
-		openCellSafe(x-1,y,&*sf,&*seeF)
+		openCellSafe(x-1,y,&*innerMap,&*outerMap)
 		if y!=0 {
-			openCellSafe(x-1,y-1,&*sf,&*seeF)
+			openCellSafe(x-1,y-1,&*innerMap,&*outerMap)
 		}
-		if y!=len((*sf)[x])-1{
-			openCellSafe(x-1,y+1,&*sf,&*seeF)
+		if y!=len((*innerMap)[x])-1{
+			openCellSafe(x-1,y+1,&*innerMap,&*outerMap)
 		}
 	}
-	if x!=len(*sf)-1 {
-		openCellSafe(x+1,y,&*sf,&*seeF)
+	if x!=len(*innerMap)-1 {
+		openCellSafe(x+1,y,&*innerMap,&*outerMap)
 		if y!=0 {
-			openCellSafe(x+1,y-1,&*sf,&*seeF)
+			openCellSafe(x+1,y-1,&*innerMap,&*outerMap)
 		}
-		if y!=len((*sf)[x])-1{
-			openCellSafe(x+1,y+1,&*sf,&*seeF)
+		if y!=len((*innerMap)[x])-1{
+			openCellSafe(x+1,y+1,&*innerMap,&*outerMap)
 		}
 	}
 	if y!=0 {
-		openCellSafe(x,y-1,&*sf,&*seeF)
+		openCellSafe(x,y-1,&*innerMap,&*outerMap)
 	}
-	if y!=len((*sf)[x])-1{
-		openCellSafe(x,y+1,&*sf,&*seeF)
+	if y!=len((*innerMap)[x])-1{
+		openCellSafe(x,y+1,&*innerMap,&*outerMap)
 	}
+ }
+
+ func neighbourCells(x int, y int, array *[][]string) []string{
+ 	result := make([]string, 0);
+ 	if x!=0 {
+ 		result = append(result,(*array)[x-1][y])
+		if y!=0 {
+			result = append(result,(*array)[x-1][y-1])
+		}
+		if y!=len((*array)[x])-1{
+			result = append(result,(*array)[x-1][y+1])
+		}
+	}
+	if x!=len(*array)-1 {
+		result = append(result,(*array)[x+1][y])
+		if y!=0 {
+			result = append(result,(*array)[x+1][y-1])
+		}
+		if y!=len((*array)[x])-1{
+			result = append(result,(*array)[x+1][y+1])
+		}
+	}
+	if y!=0 {
+		result = append(result,(*array)[x][y-1])
+	}
+	if y!=len((*array)[x])-1{
+		result = append(result,(*array)[x][y+1])
+	}
+	return result;
  }
